@@ -2,6 +2,13 @@ package util
 
 import "net"
 
+// Connection from the Zeek conn log.
+type Connection struct {
+	SrcIP    net.IP `json:"src_ip"`
+	DstIP    net.IP `json:"dst_ip"`
+	Duration float64
+}
+
 // CheckRFC1918 - checks if an IP is an RFC1918 address.
 func CheckRFC1918(ip net.IP) bool {
 

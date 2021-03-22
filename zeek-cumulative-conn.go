@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -22,38 +21,17 @@ var (
 	ZeekDurationIndex int    = 8
 )
 
-// Connection from the Zeek conn log.
-type Connection struct {
-	SrcIP    net.IP `json:"src_ip"`
-	DstIP    net.IP `json:"dst_ip"`
-	Duration float64
-}
-
-// Equal - Checks if a connection is equal to another connection.
-func (c *Connection) Equal(conn Connection) bool {
-	if c.SrcIP.Equal(conn.SrcIP) && c.DstIP.Equal(conn.DstIP) {
-		return true
-	} else {
-		return false
-	}
-}
-
-// FindConnection - checks if a connection is already in a slice of connections.
-func FindConnection(allCon []Connection, conn Connection) int {
-	for i, currentCon := range allCon {
-		if currentCon.Equal(conn) {
-			return i
-		}
-	}
-	return -1
-}
-
 func main() {
 	path := flag.String("path", ".", "path to search.")
+	output := flag.String("output", "table", "analysis output (table|csv|json)")
 	flag.Parse()
 
-	// Get all connections from Zeek logs in path.
-	connections := []Connection{}
+	// Sum all connection durations.
+	summed := []util.Connection{}
+
+	// Map of all sums, makes searching much faster.
+	sumMap := make(map[string]*util.Connection)
+
 	e := filepath.Walk(*path, func(path string, info os.FileInfo, err error) error {
 		matched, _ := regexp.MatchString(ZeekConnLogRegex, path)
 		if matched {
@@ -80,8 +58,15 @@ func main() {
 					if !util.CheckRFC1918(dstIP) {
 
 						// Append to connections slice.
-						newConnection := Connection{SrcIP: srcIP, DstIP: dstIP, Duration: duration}
-						connections = append(connections, newConnection)
+						newConnection := util.Connection{SrcIP: srcIP, DstIP: dstIP, Duration: duration}
+						mapKey := srcIP.String() + ":" + dstIP.String()
+						result := sumMap[mapKey]
+
+						if result == nil {
+							sumMap[mapKey] = &newConnection
+						} else {
+							sumMap[mapKey].Duration += newConnection.Duration
+						}
 					}
 				}
 			}
@@ -92,16 +77,9 @@ func main() {
 		log.Fatal(e)
 	}
 
-	// Sum all connection durations.
-	summed := []Connection{}
-	for _, v := range connections {
-
-		index := FindConnection(summed, v)
-		if index > 0 {
-			summed[index].Duration += v.Duration
-		} else {
-			summed = append(summed, v)
-		}
+	// Get values from map into slice.
+	for _, v := range sumMap {
+		summed = append(summed, *v)
 	}
 
 	// Sort summed connections.
@@ -109,8 +87,5 @@ func main() {
 		return summed[i].Duration > summed[j].Duration
 	})
 
-	// Print output to screen.
-	for _, v := range summed {
-		fmt.Printf("%s,%s,%.2f\n", v.SrcIP.String(), v.DstIP.String(), v.Duration)
-	}
+	util.WriteOutput(summed, *output)
 }

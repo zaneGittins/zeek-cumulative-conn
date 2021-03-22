@@ -1,2 +1,3 @@
 zeek-cumulative-conn
 zeek-cumulative-conn.exe
+*.log*
