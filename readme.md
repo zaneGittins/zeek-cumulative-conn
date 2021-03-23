@@ -6,4 +6,8 @@ Gets cumulative connection duration from Zeek logs. Something similar can be don
 zcat conn.*.log.gz | zeek-cut id.orig_h id.resp_h duration | sort | grep -v '-' | datamash -g 1,2 sum 3 | sort -k 3 -rn | head -10
 ```
 
-However, I decided to create this small program, as I found it difficult to filter out RFC1918 addresses from the id.resp_h in the above command.
+However, I decided to create this small program, as I found it difficult to filter out RFC1918 addresses from the id.resp_h in the above command. As an added bonus, this program runs faster then using `zcat/zeek-cut/datamash`.
+
+## References
+
+* [Active Countermeasures Threat Hunting Training Course](https://www.activecountermeasures.com/cyber-threat-hunting-training-course/)
